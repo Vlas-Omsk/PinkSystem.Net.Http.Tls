@@ -2,6 +2,6 @@
 {
     public sealed record FingerprintedHttpRequestHandlerOptions : HttpRequestHandlerOptions
     {
-        public Ja3Fingerprint? Fingerprint { get; }
+        public Ja3Fingerprint? Fingerprint { get; set; }
     }
 }
