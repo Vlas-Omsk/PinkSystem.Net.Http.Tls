@@ -1,0 +1,6 @@
+[submodule "BotsCommon"]
+	path = BotsCommon
+	url = https://github.com/Vlas-Omsk/BotsCommon
+[submodule "bc-csharp"]
+	path = bc-csharp
+	url = https://github.com/Vlas-Omsk/bc-csharp
