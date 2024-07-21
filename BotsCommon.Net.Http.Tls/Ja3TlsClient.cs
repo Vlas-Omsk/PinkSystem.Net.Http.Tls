@@ -1,4 +1,5 @@
-﻿using Org.BouncyCastle.Asn1.Ocsp;
+﻿using MoreLinq;
+using Org.BouncyCastle.Asn1.Ocsp;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Tls;
 using Org.BouncyCastle.Tls.Crypto.Impl.BC;
@@ -181,7 +182,7 @@ namespace BotsCommon.Net.Http.Tls
 
             var clientExtensions = new Dictionary<int, byte[]>();
 
-            foreach (var clientExtensionId in _fingerprint.ExtensionsOrder)
+            foreach (var clientExtensionId in _fingerprint.ExtensionsOrder.Shuffle())
             {
                 if (clientExtensionId == 16 && !EnableHttp2)
                     continue;

@@ -1,4 +1,5 @@
 ﻿using BotsCommon.Net.Http.Handlers;
+using BotsCommon.Net.Http.Sockets;
 using System;
 
 namespace BotsCommon.Net.Http.Tls.Handlers.Factories
@@ -13,6 +14,8 @@ namespace BotsCommon.Net.Http.Tls.Handlers.Factories
             _socketOptions = socketOptions;
             _timeout = timeout;
         }
+
+        public ISocketsProvider SocketsProvider => _socketOptions.Provider;
 
         public IHttpRequestHandler Create(FingerprintedHttpRequestHandlerOptions options)
         {

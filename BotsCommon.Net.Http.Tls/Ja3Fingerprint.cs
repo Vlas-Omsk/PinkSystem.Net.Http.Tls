@@ -13,6 +13,11 @@ namespace BotsCommon.Net
     {
         public static Ja3Fingerprint Chrome123 { get; } = Parse("771,4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53,0-5-10-11-13-16-18-23-27-35-43-45-51-17513-65037-65281,29-23-24,0");
 
+        public override string ToString()
+        {
+            return $"{ProtocolVersion.GetLatestTls(SupportedVersions).FullVersion},{string.Join('-', SupportedCiphers)},{string.Join('-', ExtensionsOrder)},{string.Join('-', SupportedGroups)},0";
+        }
+
         public static Ja3Fingerprint Parse(string fingerprints)
         {
             var parts = fingerprints.Split(',');
