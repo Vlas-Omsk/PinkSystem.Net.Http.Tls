@@ -1,4 +1,5 @@
 ﻿using BotsCommon.Net.Http.Handlers;
+using BotsCommon.Net.Http.Sockets;
 using CommunityToolkit.HighPerformance;
 using Org.BouncyCastle.Tls;
 using System;
@@ -23,14 +24,14 @@ namespace BotsCommon.Net.Http.Tls.Handlers
 
         private sealed class TlsProtocolStream : SslStream
         {
-            private readonly NetworkStream _networkStream;
+            private readonly Stream _networkStream;
             private readonly Ja3TlsClient _tlsClient;
             private readonly TlsClientProtocol _protocol;
             private readonly byte[] _readBuffer = new byte[8192];
             private readonly byte[] _writeBuffer = new byte[8192];
             private bool _isAuthenticated = false;
 
-            public TlsProtocolStream(NetworkStream networkStream, Ja3TlsClient tlsClient) : base(new MemoryStream(0))
+            public TlsProtocolStream(Stream networkStream, Ja3TlsClient tlsClient) : base(new MemoryStream(0))
             {
                 _networkStream = networkStream;
                 _tlsClient = tlsClient;
@@ -271,7 +272,7 @@ namespace BotsCommon.Net.Http.Tls.Handlers
 
             try
             {
-                NetworkStream networkStream;
+                Stream networkStream;
 
                 if (Options.Proxy != null)
                 {
@@ -281,7 +282,7 @@ namespace BotsCommon.Net.Http.Tls.Handlers
                 {
                     await socket.ConnectAsync(context.DnsEndPoint, cancellationToken).ConfigureAwait(false);
 
-                    networkStream = new NetworkStream(socket, ownsSocket: true);
+                    networkStream = socket.GetStream();
                 }
 
                 var uri = context.InitialRequestMessage.RequestUri!;
@@ -307,14 +308,14 @@ namespace BotsCommon.Net.Http.Tls.Handlers
             }
         }
 
-        private async Task<NetworkStream> ConnectProxy(Socket socket, HttpRequestMessage request, CancellationToken cancellationToken)
+        private async Task<Stream> ConnectProxy(ISocket socket, HttpRequestMessage request, CancellationToken cancellationToken)
         {
             await socket.ConnectAsync(
                 new DnsEndPoint(Options.Proxy!.Host, Options.Proxy.Port),
                 cancellationToken
             ).ConfigureAwait(false);
 
-            var networkStream = new NetworkStream(socket, ownsSocket: true);
+            var networkStream = socket.GetStream();
 
             var uri = request.RequestUri!;
 
