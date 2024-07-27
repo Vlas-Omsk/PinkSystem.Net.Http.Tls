@@ -19,7 +19,7 @@ namespace BotsCommon.Net.Http.Tls.Handlers
     {
         private readonly HttpClient _httpClient;
         private readonly Ja3Fingerprint _fingerprint;
-        private readonly SystemNetSocketOptions _socketOptions;
+        private readonly ISocketsProvider _socketsProvider;
         private readonly TimeSpan _timeout;
 
         private sealed class TlsProtocolStream : SslStream
@@ -208,7 +208,7 @@ namespace BotsCommon.Net.Http.Tls.Handlers
 
         public Ja3TlsHttpRequestHandler(
             HttpRequestHandlerOptions options,
-            SystemNetSocketOptions socketOptions,
+            ISocketsProvider socketsProvider,
             Ja3Fingerprint fingerprint,
             TimeSpan timeout
         )
@@ -234,7 +234,7 @@ namespace BotsCommon.Net.Http.Tls.Handlers
 
             _fingerprint = fingerprint;
             _timeout = timeout;
-            _socketOptions = socketOptions;
+            _socketsProvider = socketsProvider;
 
             Options = options;
         }
@@ -253,19 +253,12 @@ namespace BotsCommon.Net.Http.Tls.Handlers
         }
         public IHttpRequestHandler Clone()
         {
-            return new Ja3TlsHttpRequestHandler(Options, _socketOptions, _fingerprint, _timeout);
+            return new Ja3TlsHttpRequestHandler(Options, _socketsProvider, _fingerprint, _timeout);
         }
 
         private async ValueTask<Stream> ConnectCallback(SocketsHttpConnectionContext context, CancellationToken cancellationToken)
         {
-            var socket = await _socketOptions.Provider.Create(SocketType.Stream, ProtocolType.Tcp, cancellationToken);
-
-            socket.NoDelay = true;
-
-            if (_socketOptions.DisableLingering)
-            {
-                socket.LingerState = new(false, 0);
-            }
+            var socket = await _socketsProvider.Create(SocketType.Stream, ProtocolType.Tcp, cancellationToken);
 
             if (!OperatingSystem.IsLinux())
                 socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
