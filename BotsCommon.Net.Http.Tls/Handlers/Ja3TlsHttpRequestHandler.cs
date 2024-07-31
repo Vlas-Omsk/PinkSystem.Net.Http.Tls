@@ -178,7 +178,8 @@ namespace BotsCommon.Net.Http.Tls.Handlers
             {
                 var length = await _networkStream.ReadAsync(_readBuffer, cancellationToken);
 
-                _protocol.OfferInput(_readBuffer, 0, length);
+                if (length > 0)
+                    _protocol.OfferInput(_readBuffer, 0, length);
 
                 return length;
             }
