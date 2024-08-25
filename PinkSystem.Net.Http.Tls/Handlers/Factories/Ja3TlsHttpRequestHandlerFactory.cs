@@ -1,8 +1,8 @@
-﻿using BotsCommon.Net.Http.Handlers;
-using BotsCommon.Net.Http.Sockets;
+﻿using PinkSystem.Net.Http.Handlers;
+using PinkSystem.Net.Http.Sockets;
 using System;
 
-namespace BotsCommon.Net.Http.Tls.Handlers.Factories
+namespace PinkSystem.Net.Http.Tls.Handlers.Factories
 {
     public sealed class Ja3TlsHttpRequestHandlerFactory : IFingerprintedHttpRequestHandlerFactory
     {

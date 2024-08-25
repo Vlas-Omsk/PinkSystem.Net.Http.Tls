@@ -1,5 +1,5 @@
-﻿using BotsCommon.Net.Http.Handlers;
-using BotsCommon.Net.Http.Sockets;
+﻿using PinkSystem.Net.Http.Handlers;
+using PinkSystem.Net.Http.Sockets;
 using CommunityToolkit.HighPerformance;
 using Org.BouncyCastle.Tls;
 using System;
@@ -13,7 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace BotsCommon.Net.Http.Tls.Handlers
+namespace PinkSystem.Net.Http.Tls.Handlers
 {
     public sealed class Ja3TlsHttpRequestHandler : IHttpRequestHandler
     {

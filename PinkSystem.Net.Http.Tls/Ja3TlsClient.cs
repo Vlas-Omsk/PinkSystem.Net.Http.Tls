@@ -10,7 +10,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
-namespace BotsCommon.Net.Http.Tls
+namespace PinkSystem.Net.Http.Tls
 {
     internal sealed class Ja3TlsClient : AbstractTlsClient
     {

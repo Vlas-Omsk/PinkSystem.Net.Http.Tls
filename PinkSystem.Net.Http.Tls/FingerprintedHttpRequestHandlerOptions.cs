@@ -1,4 +1,4 @@
-﻿namespace BotsCommon.Net.Http.Tls
+﻿namespace PinkSystem.Net.Http.Tls
 {
     public sealed record FingerprintedHttpRequestHandlerOptions : HttpRequestHandlerOptions
     {

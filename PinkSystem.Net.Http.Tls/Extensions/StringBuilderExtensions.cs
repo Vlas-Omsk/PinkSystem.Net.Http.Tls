@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace BotsCommon.Net.Http.Tls
+namespace PinkSystem.Net.Http.Tls
 {
     public static class StringBuilderExtensions
     {

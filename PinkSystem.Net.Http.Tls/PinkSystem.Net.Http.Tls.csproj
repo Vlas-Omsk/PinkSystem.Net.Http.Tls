@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="morelinq" Version="4.3.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\bc-csharp\crypto\src\BouncyCastle.Crypto.csproj" />
+    <ProjectReference Include="..\PinkSystem\PinkSystem.Net.Http\PinkSystem.Net.Http.csproj" />
+  </ItemGroup>
+</Project>

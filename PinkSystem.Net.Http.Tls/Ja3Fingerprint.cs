@@ -2,7 +2,7 @@
 using System;
 using System.Linq;
 
-namespace BotsCommon.Net
+namespace PinkSystem.Net
 {
     public sealed record Ja3Fingerprint(
         ProtocolVersion[] SupportedVersions,

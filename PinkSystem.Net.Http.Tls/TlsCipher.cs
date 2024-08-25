@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace BotsCommon.Net.Http.Tls
+namespace PinkSystem.Net.Http.Tls
 {
     public static class TlsCipher
     {
