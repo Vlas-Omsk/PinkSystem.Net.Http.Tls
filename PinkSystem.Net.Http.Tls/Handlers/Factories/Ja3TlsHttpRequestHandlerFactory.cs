@@ -19,12 +19,12 @@ namespace PinkSystem.Net.Http.Tls.Handlers.Factories
 
         public IHttpRequestHandler Create(FingerprintedHttpRequestHandlerOptions options)
         {
-            return new Ja3TlsHttpRequestHandler(options, _socketsProvider, options.Fingerprint ?? Ja3Fingerprint.Chrome123, _timeout);
+            return new Ja3TlsHttpRequestHandler(options, _socketsProvider, options.Fingerprint ?? Ja3Fingerprint.Default, _timeout);
         }
 
         public IHttpRequestHandler Create(HttpRequestHandlerOptions options)
         {
-            return new Ja3TlsHttpRequestHandler(options, _socketsProvider, Ja3Fingerprint.Chrome123, _timeout);
+            return new Ja3TlsHttpRequestHandler(options, _socketsProvider, Ja3Fingerprint.Default, _timeout);
         }
     }
 }
