@@ -31,7 +31,7 @@ namespace PinkSystem.Net.Http.Tls.Handlers
             private readonly byte[] _writeBuffer = new byte[8192];
             private bool _isAuthenticated = false;
 
-            public TlsProtocolStream(Stream networkStream, Ja3TlsClient tlsClient) : base(new MemoryStream(0))
+            public TlsProtocolStream(Stream networkStream, Ja3TlsClient tlsClient) : base(Null)
             {
                 _networkStream = networkStream;
                 _tlsClient = tlsClient;
@@ -196,14 +196,17 @@ namespace PinkSystem.Net.Http.Tls.Handlers
                 await _networkStream.FlushAsync(cancellationToken);
             }
 
+            public override ValueTask DisposeAsync()
+            {
+                Dispose(true);
+
+                return ValueTask.CompletedTask;
+            }
+
             protected override void Dispose(bool disposing)
             {
                 if (disposing)
-                {
                     _networkStream.Dispose();
-                }
-
-                base.Dispose(disposing);
             }
         }
 
