@@ -22,6 +22,40 @@ namespace PinkSystem.Net.Http.Tls.Handlers
         private readonly ISocketsProvider _socketsProvider;
         private readonly TimeSpan _timeout;
 
+        private sealed class NullStream : Stream
+        {
+            public override bool CanRead { get; } = true;
+            public override bool CanSeek { get; } = true;
+            public override bool CanWrite { get; } = true;
+            public override long Length { get; } = 0;
+            public override long Position { get; set; } = 0;
+
+            public override void Flush()
+            {
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                return 0;
+            }
+
+            public override long Seek(long offset, SeekOrigin origin)
+            {
+                Position = offset;
+
+                return offset;
+            }
+
+            public override void SetLength(long value)
+            {
+                throw new NotSupportedException();
+            }
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+            }
+        }
+
         private sealed class TlsProtocolStream : SslStream
         {
             private readonly Stream _networkStream;
@@ -31,7 +65,7 @@ namespace PinkSystem.Net.Http.Tls.Handlers
             private readonly byte[] _writeBuffer = new byte[8192];
             private bool _isAuthenticated = false;
 
-            public TlsProtocolStream(Stream networkStream, Ja3TlsClient tlsClient) : base(Null)
+            public TlsProtocolStream(Stream networkStream, Ja3TlsClient tlsClient) : base(new NullStream())
             {
                 _networkStream = networkStream;
                 _tlsClient = tlsClient;
