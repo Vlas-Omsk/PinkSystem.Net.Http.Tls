@@ -3,15 +3,16 @@ using PinkSystem.Net.Http.Sockets;
 using CommunityToolkit.HighPerformance;
 using Org.BouncyCastle.Tls;
 using System;
-using System.Buffers;
 using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Security;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using PinkSystem.Runtime;
+using System.Text;
+using System.Buffers;
 
 namespace PinkSystem.Net.Http.Tls.Handlers
 {
@@ -251,13 +252,12 @@ namespace PinkSystem.Net.Http.Tls.Handlers
             TimeSpan timeout
         )
         {
-            var handler = new SocketsHttpHandler()
+            var handler = new SocketsHttpHandler
             {
                 AutomaticDecompression = DecompressionMethods.None,
-                AllowAutoRedirect = false
+                AllowAutoRedirect = false,
+                ConnectCallback = ConnectCallback,
             };
-
-            handler.ConnectCallback = ConnectCallback;
 
             if (!options.ValidateSsl)
                 handler.SslOptions = new()
@@ -281,6 +281,7 @@ namespace PinkSystem.Net.Http.Tls.Handlers
 
         public async Task<HttpResponse> SendAsync(HttpRequest request, CancellationToken cancellationToken)
         {
+            // We disable support for other http versions, as they use additional fingerprinting methods that not supported.
             request.HttpVersion = HttpVersion.Version11;
 
             using var requestMessage = SystemNetHttpUtils.CreateNetRequestFromRequest(request);
@@ -341,8 +342,10 @@ namespace PinkSystem.Net.Http.Tls.Handlers
 
         private async Task<Stream> ConnectProxy(ISocket socket, HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            var proxy = Options.Proxy!;
+
             await socket.ConnectAsync(
-                new DnsEndPoint(Options.Proxy!.Host, Options.Proxy.Port),
+                new DnsEndPoint(proxy.Host, proxy.Port),
                 cancellationToken
             ).ConfigureAwait(false);
 
@@ -350,17 +353,56 @@ namespace PinkSystem.Net.Http.Tls.Handlers
 
             var uri = request.RequestUri!;
 
+            switch (proxy.Scheme)
+            {
+                case ProxyScheme.Http:
+                case ProxyScheme.Https:
+                    await EstablishHttpTunnel(
+                        networkStream,
+                        uri,
+                        request.Headers.UserAgent.ToString(),
+                        cancellationToken
+                    );
+                    break;
+                case ProxyScheme.Socks4:
+                case ProxyScheme.Socks4a:
+                case ProxyScheme.Socks5:
+                    var socksHelperType = Type.GetType("System.Net.Http.SocksHelper, System.Net.Http")!;
+                    var socksHelperAccessor = ObjectAccessor.CreateStatic(socksHelperType);
+
+                    await (ValueTask)socksHelperAccessor.CallMethod(
+                        "EstablishSocksTunnelAsync",
+                        networkStream,
+                        uri.Host,
+                        uri.Port,
+                        new Uri(proxy.GetUri(useCredentials: false)),
+                        proxy.HasCredentials ?
+                            new NetworkCredential(proxy.Username, proxy.Password) :
+                            null,
+                        true /* async */,
+                        cancellationToken
+                    )!;
+                    break;
+            }
+
+            return networkStream;
+        }
+
+        private async Task EstablishHttpTunnel(Stream stream, Uri requestUri, string userAgent, CancellationToken cancellationToken)
+        {
             var dataBuilder = new StringBuilder();
 
-            dataBuilder.Append($"CONNECT {uri.Host}:{uri.Port} HTTP/1.1").AppendHttpLine();
+            dataBuilder.Append($"CONNECT {requestUri.Host}:{requestUri.Port} HTTP/1.1").AppendHttpLine();
 
-            dataBuilder.Append($"User-Agent: {request.Headers.UserAgent.ToString()}").AppendHttpLine();
-            dataBuilder.Append($"Host: {uri.Host}443").AppendHttpLine();
+            dataBuilder.Append($"User-Agent: {userAgent}").AppendHttpLine();
+            dataBuilder.Append($"Host: {requestUri.Host}:443").AppendHttpLine();
             dataBuilder.Append($"Connection: keep-alive").AppendHttpLine();
 
-            if (Options.Proxy.HasCredentials)
+            var proxy = Options.Proxy!;
+
+            if (proxy.HasCredentials)
             {
-                var credentials = Options.Proxy.ToWebProxy().Credentials!.GetCredential(uri, "Basic")!;
+                var credentials = proxy.ToWebProxy().Credentials!.GetCredential(requestUri, "Basic")!;
 
                 dataBuilder.Append($"Proxy-Authorization: Basic {Convert.ToBase64String(Encoding.UTF8.GetBytes($"{credentials.UserName}:{credentials.Password}"))}").AppendHttpLine();
             }
@@ -377,15 +419,15 @@ namespace PinkSystem.Net.Http.Tls.Handlers
             {
                 var length = Encoding.UTF8.GetBytes(data, buffer);
 
-                await networkStream.WriteAsync(buffer.AsMemory(0, length), cancellationToken);
-                await networkStream.FlushAsync(cancellationToken);
+                await stream.WriteAsync(buffer.AsMemory(0, length), cancellationToken);
+                await stream.FlushAsync(cancellationToken);
 
                 var lineBuffer = new StringBuilder();
                 var completed = false;
 
                 while (!completed)
                 {
-                    length = await networkStream.ReadAsync(buffer, cancellationToken);
+                    length = await stream.ReadAsync(buffer, cancellationToken);
 
                     if (length == 0)
                         throw new Exception("Connection closed");
@@ -428,8 +470,6 @@ namespace PinkSystem.Net.Http.Tls.Handlers
             {
                 ArrayPool<byte>.Shared.Return(buffer);
             }
-
-            return networkStream;
         }
 
         public void Dispose()
