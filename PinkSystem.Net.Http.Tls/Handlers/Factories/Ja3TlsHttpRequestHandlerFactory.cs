@@ -1,5 +1,5 @@
 ﻿using PinkSystem.Net.Http.Handlers;
-using PinkSystem.Net.Http.Sockets;
+using PinkSystem.Net.Sockets;
 using System;
 
 namespace PinkSystem.Net.Http.Tls.Handlers.Factories

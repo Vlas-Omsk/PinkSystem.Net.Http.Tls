@@ -1,5 +1,4 @@
 ﻿using PinkSystem.Net.Http.Handlers;
-using PinkSystem.Net.Http.Sockets;
 using CommunityToolkit.HighPerformance;
 using Org.BouncyCastle.Tls;
 using System;
@@ -13,6 +12,7 @@ using System.Threading.Tasks;
 using PinkSystem.Runtime;
 using System.Text;
 using System.Buffers;
+using PinkSystem.Net.Sockets;
 
 namespace PinkSystem.Net.Http.Tls.Handlers
 {
@@ -308,7 +308,12 @@ namespace PinkSystem.Net.Http.Tls.Handlers
 
                 if (Options.Proxy != null)
                 {
-                    networkStream = await ConnectProxy(socket, context.InitialRequestMessage, cancellationToken);
+                    networkStream = await Options.Proxy.EstablishConnection(
+                        socket,
+                        context.InitialRequestMessage.RequestUri!.Host,
+                        context.InitialRequestMessage.RequestUri!.Port,
+                        cancellationToken
+                    );
                 }
                 else
                 {
@@ -337,138 +342,6 @@ namespace PinkSystem.Net.Http.Tls.Handlers
             {
                 socket.Dispose();
                 throw;
-            }
-        }
-
-        private async Task<Stream> ConnectProxy(ISocket socket, HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            var proxy = Options.Proxy!;
-
-            await socket.ConnectAsync(
-                new DnsEndPoint(proxy.Host, proxy.Port),
-                cancellationToken
-            ).ConfigureAwait(false);
-
-            var networkStream = socket.GetStream();
-
-            var uri = request.RequestUri!;
-
-            switch (proxy.Scheme)
-            {
-                case ProxyScheme.Http:
-                case ProxyScheme.Https:
-                    await EstablishHttpTunnel(
-                        networkStream,
-                        uri,
-                        request.Headers.UserAgent.ToString(),
-                        cancellationToken
-                    );
-                    break;
-                case ProxyScheme.Socks4:
-                case ProxyScheme.Socks4a:
-                case ProxyScheme.Socks5:
-                    var socksHelperType = Type.GetType("System.Net.Http.SocksHelper, System.Net.Http")!;
-                    var socksHelperAccessor = ObjectAccessor.CreateStatic(socksHelperType);
-
-                    await (ValueTask)socksHelperAccessor.CallMethod(
-                        "EstablishSocksTunnelAsync",
-                        networkStream,
-                        uri.Host,
-                        uri.Port,
-                        new Uri(proxy.GetUri(useCredentials: false)),
-                        proxy.HasCredentials ?
-                            new NetworkCredential(proxy.Username, proxy.Password) :
-                            null,
-                        true /* async */,
-                        cancellationToken
-                    )!;
-                    break;
-            }
-
-            return networkStream;
-        }
-
-        private async Task EstablishHttpTunnel(Stream stream, Uri requestUri, string userAgent, CancellationToken cancellationToken)
-        {
-            var dataBuilder = new StringBuilder();
-
-            dataBuilder.Append($"CONNECT {requestUri.Host}:{requestUri.Port} HTTP/1.1").AppendHttpLine();
-
-            dataBuilder.Append($"User-Agent: {userAgent}").AppendHttpLine();
-            dataBuilder.Append($"Host: {requestUri.Host}:443").AppendHttpLine();
-            dataBuilder.Append($"Connection: keep-alive").AppendHttpLine();
-
-            var proxy = Options.Proxy!;
-
-            if (proxy.HasCredentials)
-            {
-                var credentials = proxy.ToWebProxy().Credentials!.GetCredential(requestUri, "Basic")!;
-
-                dataBuilder.Append($"Proxy-Authorization: Basic {Convert.ToBase64String(Encoding.UTF8.GetBytes($"{credentials.UserName}:{credentials.Password}"))}").AppendHttpLine();
-            }
-
-            dataBuilder.AppendHttpLine();
-
-            var data = dataBuilder.ToString();
-
-            var buffer = ArrayPool<byte>.Shared.Rent(
-                Math.Max(Encoding.UTF8.GetByteCount(data), 8192)
-            );
-
-            try
-            {
-                var length = Encoding.UTF8.GetBytes(data, buffer);
-
-                await stream.WriteAsync(buffer.AsMemory(0, length), cancellationToken);
-                await stream.FlushAsync(cancellationToken);
-
-                var lineBuffer = new StringBuilder();
-                var completed = false;
-
-                while (!completed)
-                {
-                    length = await stream.ReadAsync(buffer, cancellationToken);
-
-                    if (length == 0)
-                        throw new Exception("Connection closed");
-
-                    for (var i = 0; i < length; i++)
-                    {
-                        if (i < length - 1 &&
-                            buffer[i] == '\r' &&
-                            buffer[i + 1] == '\n')
-                        {
-                            var line = lineBuffer.ToString();
-
-                            if (line.StartsWith("HTTP/1.1", StringComparison.OrdinalIgnoreCase))
-                            {
-                                var parts = line.Split(' ');
-
-                                var statusCode = int.Parse(parts[1]);
-
-                                if (statusCode != 200)
-                                    throw new Exception($"Error when connecting to proxy: {statusCode} {string.Join(' ', parts[2..])}");
-                            }
-                            else if (line.Length == 0)
-                            {
-                                completed = true;
-                                break;
-                            }
-
-                            lineBuffer.Clear();
-
-                            i++;
-                        }
-                        else
-                        {
-                            lineBuffer.Append((char)buffer[i]);
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(buffer);
             }
         }
 
