@@ -9,7 +9,7 @@ namespace PinkSystem.Net.Http.Tls.Handlers.Factories
     {
         private readonly SharedPooledHttpRequestHandlerFactory _httpRequestHandlerFactory;
 
-        private sealed class Factory : IFingerprintedHttpRequestHandlerFactory
+        private sealed class Factory : ISocketsHttpRequestHandlerFactory
         {
             private readonly IFingerprintedHttpRequestHandlerFactory _httpRequestHandlerFactory;
 
@@ -20,15 +20,10 @@ namespace PinkSystem.Net.Http.Tls.Handlers.Factories
 
             public ISocketsProvider SocketsProvider => _httpRequestHandlerFactory.SocketsProvider;
 
-            public IHttpRequestHandler Create(FingerprintedHttpRequestHandlerOptions options)
-            {
-                return _httpRequestHandlerFactory.Create(options);
-            }
-
             public IHttpRequestHandler Create(HttpRequestHandlerOptions options)
             {
                 if (options is FingerprintedHttpRequestHandlerOptions fingerprintedOptions)
-                    return Create(fingerprintedOptions);
+                    return _httpRequestHandlerFactory.Create(fingerprintedOptions);
 
                 return _httpRequestHandlerFactory.Create(options);
             }
@@ -36,11 +31,10 @@ namespace PinkSystem.Net.Http.Tls.Handlers.Factories
 
         public FingerprintedSharedPooledHttpRequestHandlerFactory(
             IFingerprintedHttpRequestHandlerFactory httpRequestHandlerFactory,
-            IHttpRequestHandlerWrapper httpRequestHandlerWrapper,
             ILoggerFactory loggerFactory
         )
         {
-            _httpRequestHandlerFactory = new(new Factory(httpRequestHandlerFactory), httpRequestHandlerWrapper, loggerFactory);
+            _httpRequestHandlerFactory = new(new Factory(httpRequestHandlerFactory), loggerFactory);
         }
 
         public ISocketsProvider SocketsProvider => _httpRequestHandlerFactory.SocketsProvider;
