@@ -4,10 +4,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.5.1" />
     <PackageReference Include="morelinq" Version="4.3.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\bc-csharp\crypto\src\BouncyCastle.Crypto.csproj" />
     <ProjectReference Include="..\PinkSystem\PinkSystem.Net.Http\PinkSystem.Net.Http.csproj" />
   </ItemGroup>
 </Project>

@@ -106,26 +106,47 @@ namespace PinkSystem.Net.Http.Tls.Handlers
 
             public override int Read(byte[] buffer, int offset, int count)
             {
-                return ReadAsync(buffer, offset, count).GetAwaiter().GetResult();
-            }
-
-            public override int Read(Span<byte> buffer)
-            {
-                var length = ReadAsync(_readBuffer, 0, buffer.Length).GetAwaiter().GetResult();
-
-                _readBuffer.AsSpan(0, length).CopyTo(buffer);
-
-                return length;
+                return Read(buffer.AsSpan(offset, count));
             }
 
             public override int ReadByte()
             {
-                var length = ReadAsync(_readBuffer, 0, 1).GetAwaiter().GetResult();
+                var length = Read(_readBuffer.AsSpan(0, 1));
 
                 if (length == 0)
                     return -1;
 
                 return _readBuffer[0];
+            }
+
+            public override int Read(Span<byte> buffer)
+            {
+                if (buffer.Length == 0)
+                    return 0;
+
+                int length;
+
+                while (true)
+                {
+                    var position = 0;
+
+                    while (position < buffer.Length && _protocol.GetAvailableInputBytes() > 0)
+                    {
+                        length = _protocol.ReadInput(_readBuffer, 0, Math.Min(_readBuffer.Length, buffer.Length - position));
+
+                        _readBuffer.AsSpan(0, length).CopyTo(buffer.Slice(position));
+
+                        position += length;
+                    }
+
+                    if (position > 0)
+                        return position;
+
+                    length = FlushRead();
+
+                    if (length == 0)
+                        return 0;
+                }
             }
 
             public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -142,17 +163,19 @@ namespace PinkSystem.Net.Http.Tls.Handlers
 
                 while (true)
                 {
-                    if (_protocol.GetAvailableInputBytes() > 0)
+                    var position = 0;
+
+                    while (position < buffer.Length && _protocol.GetAvailableInputBytes() > 0)
                     {
-                        length = _protocol.ReadInput(_readBuffer, 0, buffer.Length);
+                        length = _protocol.ReadInput(_readBuffer, 0, Math.Min(_readBuffer.Length, buffer.Length - position));
 
-                        if (length > 0)
-                        {
-                            _readBuffer.AsMemory(0, length).CopyTo(buffer);
+                        _readBuffer.AsMemory(0, length).CopyTo(buffer.Slice(position));
 
-                            return length;
-                        }
+                        position += length;
                     }
+
+                    if (position > 0)
+                        return position;
 
                     length = await FlushReadAsync(cancellationToken);
 
@@ -173,7 +196,7 @@ namespace PinkSystem.Net.Http.Tls.Handlers
 
             public override void Write(byte[] buffer, int offset, int count)
             {
-                WriteAsync(buffer, offset, count);
+                Write(buffer.AsSpan(offset, count));
             }
 
             public override void WriteByte(byte value)
@@ -185,7 +208,7 @@ namespace PinkSystem.Net.Http.Tls.Handlers
             {
                 _protocol.WriteApplicationData(buffer);
 
-                FlushWriteAsync(CancellationToken.None).GetAwaiter().GetResult();
+                FlushWrite();
             }
 
             public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -209,6 +232,16 @@ namespace PinkSystem.Net.Http.Tls.Handlers
                 return Task.CompletedTask;
             }
 
+            private int FlushRead()
+            {
+                var length = _networkStream.Read(_readBuffer);
+
+                if (length > 0)
+                    _protocol.OfferInput(_readBuffer, 0, length);
+
+                return length;
+            }
+
             private async Task<int> FlushReadAsync(CancellationToken cancellationToken)
             {
                 var length = await _networkStream.ReadAsync(_readBuffer, cancellationToken);
@@ -229,6 +262,18 @@ namespace PinkSystem.Net.Http.Tls.Handlers
                 }
 
                 await _networkStream.FlushAsync(cancellationToken);
+            }
+
+            private void FlushWrite()
+            {
+                while (_protocol.GetAvailableOutputBytes() > 0)
+                {
+                    var length = _protocol.ReadOutput(_writeBuffer, 0, _writeBuffer.Length);
+
+                    _networkStream.Write(_writeBuffer.AsSpan(0, length));
+                }
+
+                _networkStream.Flush();
             }
 
             public override ValueTask DisposeAsync()
