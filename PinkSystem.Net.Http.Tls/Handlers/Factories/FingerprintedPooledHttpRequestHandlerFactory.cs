@@ -37,6 +37,8 @@ namespace PinkSystem.Net.Http.Tls.Handlers.Factories
             _httpRequestHandlerFactory = new(new Factory(httpRequestHandlerFactory), loggerFactory);
         }
 
+        public int HandlersInUseAmount => _httpRequestHandlerFactory.HandlersInUseAmount;
+        public int HandlersAmount => _httpRequestHandlerFactory.HandlersAmount;
         public ISocketsProvider SocketsProvider => _httpRequestHandlerFactory.SocketsProvider;
 
         public IHttpRequestHandler Create(FingerprintedHttpRequestHandlerOptions options)
