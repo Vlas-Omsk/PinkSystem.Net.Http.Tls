@@ -7,7 +7,7 @@ namespace PinkSystem.Net.Http.Tls.Handlers
     {
         public Proxy? Proxy { get; init; }
         public TimeSpan Timeout { get; init; } = HttpTimeout.Default;
-        public Ja3Fingerprint Fingerprint { get; init; } = Ja3Fingerprint.Default;
+        public Ja3Fingerprint Fingerprint { get; init; } = Ja3Fingerprint.SystemNet;
 
         public bool Equals(IHttpRequestHandlerOptions? other)
         {

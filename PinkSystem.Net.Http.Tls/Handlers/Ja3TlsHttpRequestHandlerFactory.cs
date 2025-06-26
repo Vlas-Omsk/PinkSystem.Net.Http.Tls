@@ -355,7 +355,7 @@ namespace PinkSystem.Net.Http.Tls.Handlers
                     {
                         var fingerprint = _options is IFingerprintedHttpRequestHandlerOptions fingerprintedOptions ?
                             fingerprintedOptions.Fingerprint :
-                            Ja3Fingerprint.Default;
+                            Ja3Fingerprint.SystemNet;
 
                         var tlsClient = new Ja3TlsClient(null, [uri.Host], fingerprint);
                         var tlsStream = new TlsProtocolStream(networkStream, tlsClient);
