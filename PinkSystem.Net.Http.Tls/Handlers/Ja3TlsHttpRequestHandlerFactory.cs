@@ -313,7 +313,17 @@ namespace PinkSystem.Net.Http.Tls.Handlers
             public async Task<HttpResponse> SendAsync(HttpRequest request, CancellationToken cancellationToken)
             {
                 // We disable support for other http versions, as they use additional fingerprinting methods that not supported.
-                request.HttpVersion = HttpVersion.Version11;
+                if (request.Version != HttpVersion.Version11)
+                {
+                    request = new()
+                    {
+                        Uri = request.Uri,
+                        Method = request.Method,
+                        Content = request.Content,
+                        Headers = request.Headers,
+                        Version = HttpVersion.Version11,
+                    };
+                }
 
                 using var requestMessage = SystemNetHttpUtils.CreateNetRequestFromRequest(request);
 
